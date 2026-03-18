@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AarogyaVaani — Hospital Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; }
+
+  .topbar {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: white; padding: 0 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px; box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  }
+  .topbar-logo { font-size: 22px; font-weight: 700; letter-spacing: 1px; }
+  .topbar-logo span { color: #4fc3f7; }
+  .topbar-sub { font-size: 12px; color: #90caf9; margin-top: 2px; }
+  .topbar-right { display: flex; align-items: center; gap: 20px; }
+  .topbar-stat { text-align: center; }
+  .topbar-stat .val { font-size: 20px; font-weight: 700; color: #4fc3f7; }
+  .topbar-stat .lbl { font-size: 10px; color: #90caf9; }
+  .live-badge {
+    background: #e53935; color: white; font-size: 11px; font-weight: 700;
+    padding: 4px 10px; border-radius: 20px; display: flex; align-items: center; gap: 6px;
+    animation: pulse-badge 1.5s infinite;
+  }
+  .live-dot { width: 7px; height: 7px; background: white; border-radius: 50%; animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  @keyframes pulse-badge { 0%,100%{box-shadow:0 0 0 0 rgba(229,57,53,0.5)} 50%{box-shadow:0 0 0 6px rgba(229,57,53,0)} }
+
+  .layout { display: flex; height: calc(100vh - 64px); overflow: hidden; }
+
+  .sidebar {
+    width: 220px; background: #16213e; color: white;
+    display: flex; flex-direction: column; padding: 16px 0; flex-shrink: 0;
+    overflow-y: auto;
+  }
+  .sidebar-section { font-size: 10px; color: #546e7a; text-transform: uppercase;
+    letter-spacing: 1px; padding: 8px 20px 4px; margin-top: 8px; }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 20px; cursor: pointer; font-size: 13px; color: #b0bec5;
+    transition: all 0.2s; border-left: 3px solid transparent;
+  }
+  .sidebar-item:hover { background: rgba(79,195,247,0.08); color: white; }
+  .sidebar-item.active { background: rgba(79,195,247,0.15); color: #4fc3f7; border-left-color: #4fc3f7; }
+  .sidebar-icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-badge {
+    margin-left: auto; background: #e53935; color: white;
+    font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px;
+  }
+  .sidebar-badge.green { background: #43a047; }
+
+  .main { flex: 1; overflow-y: auto; padding: 24px; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-title { font-size: 22px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: #607d8b; margin-bottom: 24px; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card {
+    background: white; border-radius: 12px; padding: 20px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 4px solid #4fc3f7;
+  }
+  .stat-card.red { border-left-color: #e53935; }
+  .stat-card.amber { border-left-color: #fb8c00; }
+  .stat-card.green { border-left-color: #43a047; }
+  .stat-card.blue { border-left-color: #1e88e5; }
+  .stat-val { font-size: 32px; font-weight: 700; color: #1a1a2e; }
+  .stat-lbl { font-size: 12px; color: #90a4ae; margin-top: 4px; }
+  .stat-change { font-size: 11px; margin-top: 6px; }
+  .stat-change.up { color: #43a047; }
+  .stat-change.down { color: #e53935; }
+
+  .card { background: white; border-radius: 12px; padding: 20px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 20px; }
+  .card-title { font-size: 15px; font-weight: 600; color: #1a1a2e; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+
+  .risk-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .risk-RED { background: #ffebee; color: #c62828; }
+  .risk-AMBER { background: #fff3e0; color: #e65100; }
+  .risk-GREEN { background: #e8f5e9; color: #2e7d32; }
+
+  .module-badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; margin-right: 4px; }
+  .mod-triage { background: #e3f2fd; color: #1565c0; }
+  .mod-discharge { background: #f3e5f5; color: #6a1b9a; }
+  .mod-chronic { background: #e8f5e9; color: #1b5e20; }
+  .mod-caregiver { background: #fff8e1; color: #f57f17; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 600; color: #90a4ae; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #f0f2f5; background: #fafbfc; }
+  td { padding: 12px; border-bottom: 1px solid #f5f5f5; color: #37474f; vertical-align: middle; }
+  tr:hover td { background: #f9fbe7; cursor: pointer; }
+  tr:last-child td { border-bottom: none; }
+
+  .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s; }
+  .btn-primary { background: #1e88e5; color: white; }
+  .btn-primary:hover { background: #1565c0; }
+  .btn-danger { background: #e53935; color: white; }
+  .btn-danger:hover { background: #b71c1c; }
+  .btn-success { background: #43a047; color: white; }
+  .btn-success:hover { background: #2e7d32; }
+  .btn-outline { background: white; color: #1e88e5; border: 1px solid #1e88e5; }
+  .btn-outline:hover { background: #e3f2fd; }
+  .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+  .call-panel {
+    background: linear-gradient(135deg, #1a1a2e, #0f3460);
+    border-radius: 16px; padding: 28px; color: white; position: relative; overflow: hidden;
+  }
+  .call-status { font-size: 12px; color: #4fc3f7; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .call-patient-name { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+  .call-meta { font-size: 12px; color: #90caf9; margin-bottom: 20px; }
+  .call-waveform { display: flex; align-items: center; gap: 3px; height: 40px; margin-bottom: 20px; }
+  .wave-bar { width: 4px; background: #4fc3f7; border-radius: 2px; animation: wave 0.8s ease-in-out infinite; }
+  .wave-bar:nth-child(2){animation-delay:0.1s}.wave-bar:nth-child(3){animation-delay:0.2s}
+  .wave-bar:nth-child(4){animation-delay:0.3s}.wave-bar:nth-child(5){animation-delay:0.4s}
+  .wave-bar:nth-child(6){animation-delay:0.3s}.wave-bar:nth-child(7){animation-delay:0.2s}
+  .wave-bar:nth-child(8){animation-delay:0.1s}.wave-bar:nth-child(9){animation-delay:0.0s}
+  .wave-bar:nth-child(10){animation-delay:0.15s}.wave-bar:nth-child(11){animation-delay:0.25s}
+  .wave-bar:nth-child(12){animation-delay:0.35s}
+  @keyframes wave { 0%,100%{height:6px;opacity:0.4} 50%{height:32px;opacity:1} }
+  .call-waveform.paused .wave-bar { animation-play-state: paused; height: 6px; opacity: 0.3; }
+
+  .transcript-box { background: rgba(255,255,255,0.07); border-radius: 10px; padding: 16px; max-height: 200px; overflow-y: auto; font-size: 13px; line-height: 1.7; }
+  .transcript-box::-webkit-scrollbar { width: 4px; }
+  .transcript-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+  .msg-ai { color: #4fc3f7; margin-bottom: 8px; }
+  .msg-ai span { color: #90caf9; font-weight: 600; font-size: 11px; margin-right: 6px; }
+  .msg-patient { color: #a5d6a7; margin-bottom: 8px; }
+  .msg-patient span { color: #81c784; font-weight: 600; font-size: 11px; margin-right: 6px; }
+  .msg-caregiver { color: #ffe082; margin-bottom: 8px; }
+  .msg-caregiver span { color: #ffd54f; font-weight: 600; font-size: 11px; margin-right: 6px; }
+  .msg-system { color: #ffcc02; font-size: 11px; margin-bottom: 8px; font-style: italic; }
+  .call-controls { display: flex; gap: 10px; margin-top: 16px; }
+
+  .output-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .output-item { background: rgba(255,255,255,0.07); border-radius: 8px; padding: 10px 12px; }
+  .output-item .ok { font-size: 11px; color: #90caf9; margin-bottom: 3px; }
+  .output-item .ov { font-size: 14px; font-weight: 600; color: white; }
+  .output-item .ov.red { color: #ef9a9a; }
+  .output-item .ov.green { color: #a5d6a7; }
+  .output-item .ov.amber { color: #ffe082; }
+
+  .detail-header { background: linear-gradient(135deg, #1a1a2e, #0f3460); border-radius: 12px; padding: 24px; color: white; margin-bottom: 20px; display: flex; align-items: center; gap: 20px; }
+  .detail-avatar { width: 64px; height: 64px; border-radius: 50%; background: #4fc3f7; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; color: #1a1a2e; flex-shrink: 0; }
+  .detail-info h2 { font-size: 22px; font-weight: 700; }
+  .detail-info p { font-size: 13px; color: #90caf9; margin-top: 4px; }
+  .detail-tags { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .detail-tag { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+  .dt-lang { background: rgba(79,195,247,0.2); color: #4fc3f7; }
+  .dt-cond { background: rgba(165,214,167,0.2); color: #a5d6a7; }
+  .dt-mod { background: rgba(255,224,130,0.2); color: #ffe082; }
+
+  .timeline { position: relative; padding-left: 28px; }
+  .timeline::before { content:''; position:absolute; left:10px; top:0; bottom:0; width:2px; background:#f0f2f5; }
+  .tl-item { position: relative; margin-bottom: 16px; }
+  .tl-dot { position: absolute; left: -22px; top: 4px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; }
+  .tl-dot.red { background: #e53935; }
+  .tl-dot.amber { background: #fb8c00; }
+  .tl-dot.green { background: #43a047; }
+  .tl-date { font-size: 11px; color: #90a4ae; margin-bottom: 3px; }
+  .tl-title { font-size: 13px; font-weight: 600; color: #1a1a2e; }
+  .tl-body { font-size: 12px; color: #607d8b; margin-top: 3px; line-height: 1.6; }
+
+  .bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 80px; padding-top: 8px; }
+  .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .bar { width: 100%; border-radius: 4px 4px 0 0; transition: height 1s ease; min-height: 4px; }
+  .bar-lbl { font-size: 10px; color: #90a4ae; }
+  .bar-val { font-size: 11px; font-weight: 600; color: #37474f; }
+
+  .wf-canvas { background: #f8fafc; border: 2px dashed #cfd8dc; border-radius: 12px; padding: 20px; min-height: 300px; }
+  .wf-block { background: white; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; border-left: 4px solid #1e88e5; box-shadow: 0 2px 6px rgba(0,0,0,0.06); display: flex; align-items: flex-start; gap: 12px; }
+  .wf-block.conditional { border-left-color: #fb8c00; }
+  .wf-block.closing { border-left-color: #43a047; }
+  .wf-block-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+  .wf-block-content { flex: 1; }
+  .wf-block-type { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #90a4ae; margin-bottom: 3px; }
+  .wf-block-q { font-size: 13px; color: #1a1a2e; font-weight: 500; }
+  .wf-block-q-hi { font-size: 12px; color: #607d8b; margin-top: 2px; }
+  .wf-connector { text-align: center; color: #cfd8dc; font-size: 20px; margin: -6px 0; }
+  .wf-block-badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 600; margin-left: auto; flex-shrink: 0; }
+  .badge-yn { background: #e3f2fd; color: #1565c0; }
+  .badge-scale { background: #f3e5f5; color: #6a1b9a; }
+  .badge-open { background: #e8f5e9; color: #1b5e20; }
+  .badge-cond { background: #fff3e0; color: #e65100; }
+
+  .esc-card { background: white; border-radius: 12px; border-left: 5px solid #e53935; padding: 16px 20px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(229,57,53,0.1); display: flex; align-items: center; gap: 16px; }
+  .esc-icon { font-size: 28px; flex-shrink: 0; }
+  .esc-info { flex: 1; }
+  .esc-name { font-size: 15px; font-weight: 700; color: #1a1a2e; }
+  .esc-reason { font-size: 12px; color: #607d8b; margin-top: 3px; }
+  .esc-time { font-size: 11px; color: #e53935; font-weight: 600; margin-top: 4px; }
+  .esc-actions { display: flex; gap: 8px; }
+
+  .notif { position: fixed; bottom: 24px; right: 24px; z-index: 9999; background: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.15); max-width: 340px; display: flex; gap: 12px; align-items: flex-start; animation: slideIn 0.4s ease; border-left: 4px solid #43a047; }
+  .notif.danger { border-left-color: #e53935; }
+  .notif-icon { font-size: 22px; }
+  .notif-title { font-size: 14px; font-weight: 700; color: #1a1a2e; }
+  .notif-body { font-size: 12px; color: #607d8b; margin-top: 3px; }
+  @keyframes slideIn { from{transform:translateX(120px);opacity:0} to{transform:translateX(0);opacity:1} }
+
+  .progress-bar-wrap { background: #f0f2f5; border-radius: 20px; height: 8px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; border-radius: 20px; transition: width 1s ease; }
+  .lang-pill { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; background: #e3f2fd; color: #1565c0; }
+
+  .tab-row { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid #f0f2f5; }
+  .tab { padding: 10px 20px; font-size: 13px; font-weight: 500; cursor: pointer; color: #90a4ae; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+  .tab:hover { color: #1e88e5; }
+  .tab.active { color: #1e88e5; border-bottom-color: #1e88e5; font-weight: 600; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .back-btn { display: flex; align-items: center; gap: 6px; color: #1e88e5; font-size: 13px; cursor: pointer; margin-bottom: 16px; font-weight: 500; }
+  .back-btn:hover { color: #1565c0; }
+
+  /* ── HOW IT WORKS ── */
+  .hiw-hero { background: linear-gradient(135deg, #1a1a2e, #0f3460); border-radius: 16px; padding: 36px; color: white; text-align: center; margin-bottom: 28px; }
+  .hiw-hero h2 { font-size: 28px; font-weight: 700; margin-bottom: 10px; }
+  .hiw-hero p { font-size: 15px; color: #90caf9; max-width: 600px; margin: 0 auto; line-height: 1.7; }
+  .hiw-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-bottom: 28px; position: relative; }
+  .hiw-steps::before { content:''; position:absolute; top:36px; left:12.5%; right:12.5%; height:3px; background: linear-gradient(90deg,#4fc3f7,#7c4dff,#e53935,#43a047); border-radius:2px; z-index:0; }
+  .hiw-step { text-align: center; padding: 0 12px; position: relative; z-index: 1; cursor: pointer; }
+  .hiw-step-num { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; margin: 0 auto 14px; border: 3px solid white; transition: transform 0.2s; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+  .hiw-step:hover .hiw-step-num { transform: scale(1.1); }
+  .hiw-step-title { font-size: 14px; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
+  .hiw-step-sub { font-size: 12px; color: #607d8b; line-height: 1.6; }
+  .hiw-detail { border-radius: 16px; padding: 28px; color: white; transition: all 0.4s; }
+  .hiw-detail h3 { font-size: 20px; font-weight: 700; margin-bottom: 10px; }
+  .hiw-detail p { font-size: 14px; line-height: 1.8; color: rgba(255,255,255,0.85); }
+  .hiw-modules { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-top: 24px; }
+  .hiw-module-card { background: white; border-radius: 12px; padding: 18px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.07); transition: transform 0.2s; cursor: pointer; }
+  .hiw-module-card:hover { transform: translateY(-4px); }
+  .hiw-module-icon { font-size: 32px; margin-bottom: 10px; }
+  .hiw-module-name { font-size: 13px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+  .hiw-module-desc { font-size: 11px; color: #90a4ae; line-height: 1.5; }
+  .hiw-flow { display: flex; align-items: center; gap: 0; overflow-x: auto; padding: 20px 0; }
+  .hiw-flow-step { flex-shrink: 0; text-align: center; width: 120px; }
+  .hiw-flow-icon { width: 52px; height: 52px; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  .hiw-flow-label { font-size: 12px; font-weight: 600; color: #1a1a2e; }
+  .hiw-flow-sub { font-size: 10px; color: #90a4ae; margin-top: 3px; }
+  .hiw-flow-arrow { font-size: 24px; color: #cfd8dc; flex-shrink: 0; padding: 0 4px; margin-bottom: 22px; }
+  .stat-highlight { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-top: 24px; }
+  .stat-hl { text-align: center; padding: 20px; border-radius: 12px; }
+  .stat-hl .n { font-size: 36px; font-weight: 800; }
+  .stat-hl .l { font-size: 13px; margin-top: 4px; opacity: 0.85; }
+
+  /* ── WATCHMODE OVERLAY ── */
+  .watchmode-overlay {
+    display: none; position: fixed; inset: 0; z-index: 1000;
+    background: linear-gradient(135deg, #0a0e1a 0%, #0f1e3d 100%);
+    flex-direction: column; align-items: center; justify-content: center;
+    padding: 40px;
+  }
+  .watchmode-overlay.active { display: flex; }
+  .wm-close { position: absolute; top: 20px; right: 28px; color: #4fc3f7; font-size: 14px; cursor: pointer; font-weight: 600; border: 1px solid #4fc3f7; padding: 6px 14px; border-radius: 20px; }
+  .wm-close:hover { background: rgba(79,195,247,0.1); }
+  .wm-top { display: flex; align-items: center; gap: 20px; margin-bottom: 32px; }
+  .wm-avatar { width: 64px; height: 64px; border-radius: 50%; background: #4fc3f7; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: #1a1a2e; flex-shrink: 0; }
+  .wm-name { font-size: 22px; font-weight: 700; color: white; }
+  .wm-meta { font-size: 14px; color: #90caf9; margin-top: 4px; }
+  .wm-state { font-size: 13px; color: #4fc3f7; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-top: 6px; }
+  .wm-waveform { display: flex; align-items: center; gap: 5px; height: 48px; margin-bottom: 28px; }
+  .wm-bar { width: 6px; background: #4fc3f7; border-radius: 3px; animation: wave 0.8s ease-in-out infinite; }
+  .wm-bar:nth-child(2){animation-delay:0.1s}.wm-bar:nth-child(3){animation-delay:0.2s}
+  .wm-bar:nth-child(4){animation-delay:0.3s}.wm-bar:nth-child(5){animation-delay:0.4s}
+  .wm-bar:nth-child(6){animation-delay:0.3s}.wm-bar:nth-child(7){animation-delay:0.2s}
+  .wm-bar:nth-child(8){animation-delay:0.1s}.wm-bar:nth-child(9){animation-delay:0.0s}
+  .wm-bar:nth-child(10){animation-delay:0.15s}.wm-bar:nth-child(11){animation-delay:0.25s}
+  .wm-bar:nth-child(12){animation-delay:0.35s}.wm-bar:nth-child(13){animation-delay:0.25s}
+  .wm-bar:nth-child(14){animation-delay:0.15s}.wm-bar:nth-child(15){animation-delay:0.05s}
+  .wm-waveform.paused .wm-bar { animation-play-state: paused; height: 6px; opacity: 0.2; }
+  .wm-bubble-wrap { width: 100%; max-width: 860px; margin-bottom: 20px; }
+  .wm-bubble { border-radius: 16px; padding: 22px 28px; margin-bottom: 14px; animation: fadeUp 0.5s ease; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+  .wm-bubble.ai { background: rgba(79,195,247,0.12); border: 1px solid rgba(79,195,247,0.3); }
+  .wm-bubble.patient { background: rgba(165,214,167,0.12); border: 1px solid rgba(165,214,167,0.3); }
+  .wm-bubble.caregiver { background: rgba(255,224,130,0.12); border: 1px solid rgba(255,224,130,0.3); }
+  .wm-bubble.system { background: rgba(255,204,2,0.08); border: 1px solid rgba(255,204,2,0.2); }
+  .wm-bubble-who { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .wm-bubble.ai .wm-bubble-who { color: #4fc3f7; }
+  .wm-bubble.patient .wm-bubble-who { color: #a5d6a7; }
+  .wm-bubble.caregiver .wm-bubble-who { color: #ffe082; }
+  .wm-bubble.system .wm-bubble-who { color: #ffcc02; }
+  .wm-bubble-text { font-size: 20px; color: white; line-height: 1.6; font-weight: 500; }
+  .wm-bubble.system .wm-bubble-text { font-size: 15px; color: #ffe082; font-style: italic; }
+  .wm-risk-bar { width: 100%; max-width: 860px; }
+  .wm-risk-label { font-size: 13px; color: #90caf9; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .wm-risk-track { display: flex; border-radius: 10px; overflow: hidden; height: 18px; }
+  .wm-risk-seg { flex: 1; transition: opacity 0.5s; opacity: 0.3; }
+  .wm-risk-seg.active { opacity: 1; }
+  .wm-risk-seg.green { background: #43a047; }
+  .wm-risk-seg.amber { background: #fb8c00; }
+  .wm-risk-seg.red { background: #e53935; }
+  .wm-risk-text { font-size: 22px; font-weight: 700; margin-top: 10px; transition: color 0.5s; }
+  .wm-keywords { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; max-width: 860px; }
+  .wm-kw { font-size: 13px; padding: 5px 14px; border-radius: 20px; font-weight: 600; animation: fadeUp 0.4s ease; }
+  .wm-kw.amber { background: rgba(251,140,0,0.2); color: #ffe082; border: 1px solid rgba(251,140,0,0.4); }
+  .wm-kw.red { background: rgba(229,57,53,0.2); color: #ef9a9a; border: 1px solid rgba(229,57,53,0.4); }
+
+  /* CAREGIVER PAGE */
+  .cg-banner { background: linear-gradient(135deg, #4a1942, #7b1fa2); border-radius: 16px; padding: 28px 32px; color: white; margin-bottom: 24px; display: flex; align-items: center; gap: 24px; }
+  .cg-icon-big { font-size: 56px; }
+  .cg-banner h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .cg-banner p { font-size: 14px; color: rgba(255,255,255,0.8); line-height: 1.7; }
+  .cg-routing-box { background: white; border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 5px solid #7b1fa2; }
+  .cg-routing-title { font-size: 14px; font-weight: 700; color: #4a1942; margin-bottom: 12px; }
+  .cg-routing-flow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .cg-routing-step { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .cg-routing-circle { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  .cg-routing-label { font-size: 11px; font-weight: 600; color: #607d8b; text-align: center; max-width: 80px; }
+  .cg-routing-arrow { font-size: 20px; color: #cfd8dc; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-logo">Aarogya<span>Vaani</span></div>
+    <div class="topbar-sub">Indic Voice Patient Engagement Platform</div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-stat"><div class="val">847</div><div class="lbl">Calls Today</div></div>
+    <div class="topbar-stat"><div class="val">91%</div><div class="lbl">Completion</div></div>
+    <div class="topbar-stat"><div class="val" style="color:#ef9a9a">3</div><div class="lbl">Alerts</div></div>
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+  </div>
+</div>
+
+<div class="layout">
+<div class="sidebar">
+  <div class="sidebar-section">Overview</div>
+  <div class="sidebar-item" onclick="showPage('how-it-works',this)"><span class="sidebar-icon">💡</span> How It Works <span class="sidebar-badge green">START</span></div>
+  <div class="sidebar-item active" onclick="showPage('dashboard',this)"><span class="sidebar-icon">📊</span> Dashboard</div>
+  <div class="sidebar-item" onclick="showPage('patients',this)"><span class="sidebar-icon">👥</span> Patients</div>
+  <div class="sidebar-section">Demo Modules</div>
+  <div class="sidebar-item" onclick="showPage('call-sim',this)"><span class="sidebar-icon">📞</span> Live Call Sim <span class="sidebar-badge">DEMO</span></div>
+  <div class="sidebar-item" onclick="showPage('caregiver',this)"><span class="sidebar-icon">👨‍👩‍👧</span> Caregiver Proxy <span class="sidebar-badge">NEW</span></div>
+  <div class="sidebar-item" onclick="showPage('escalation',this)"><span class="sidebar-icon">🚨</span> Escalations <span class="sidebar-badge">3</span></div>
+  <div class="sidebar-section">Tools</div>
+  <div class="sidebar-item" onclick="showPage('workflow',this)"><span class="sidebar-icon">⚙️</span> Workflow Builder</div>
+  <div class="sidebar-item" onclick="showPage('analytics',this)"><span class="sidebar-icon">📈</span> Analytics</div>
+</div>
+
+<div class="main">
+
+  <!-- ══════════════════════ HOW IT WORKS ══════════════════════ -->
+  <div class="page" id="page-how-it-works">
+    <div class="page-title">How AarogyaVaani Works</div>
+    <div class="page-sub">The complete patient journey — from pre-arrival to weekly care</div>
+
+    <div class="hiw-hero">
+      <h2>One platform. Four modules. Every stage of patient care.</h2>
+      <p>AarogyaVaani calls patients in their own language — Hindi, Bhojpuri, Marathi, Bengali — before they arrive, after they leave, and every week in between. Every conversation becomes structured clinical data.</p>
+    </div>
+
+    <div class="hiw-steps">
+      <div class="hiw-step" onclick="showHiwDetail(0)">
+        <div class="hiw-step-num" style="background:#1e88e5;">🏥</div>
+        <div class="hiw-step-title">Pre-Arrival Triage</div>
+        <div class="hiw-step-sub">AI calls patient 2–4 hrs before OPD. Collects complaint, pain scale, urgency. Pre-fills doctor's intake form.</div>
+      </div>
+      <div class="hiw-step" onclick="showHiwDetail(1)">
+        <div class="hiw-step-num" style="background:#7b1fa2;">🏠</div>
+        <div class="hiw-step-title">Post-Discharge</div>
+        <div class="hiw-step-sub">24 & 48 hr follow-up calls. Checks prescription, discharge understanding, danger signs.</div>
+      </div>
+      <div class="hiw-step" onclick="showHiwDetail(2)">
+        <div class="hiw-step-num" style="background:#2e7d32;">💊</div>
+        <div class="hiw-step-title">Chronic Coach</div>
+        <div class="hiw-step-sub">Weekly calls for diabetes & hypertension. Meds, diet, symptoms. Builds longitudinal PRO dataset.</div>
+      </div>
+      <div class="hiw-step" onclick="showHiwDetail(3)">
+        <div class="hiw-step-num" style="background:#e65100;">👨‍👩‍👧</div>
+        <div class="hiw-step-title">Caregiver Proxy</div>
+        <div class="hiw-step-sub">For elderly or low-literacy patients, routes the call to the family caregiver instead.</div>
+      </div>
+    </div>
+
+    <div class="hiw-detail" id="hiw-detail-box" style="background:linear-gradient(135deg,#1e88e5,#1565c0); display:none;">
+      <h3 id="hiw-detail-title"></h3>
+      <p id="hiw-detail-body"></p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">The full patient journey — one call at a time</div>
+      <div class="hiw-flow">
+        <div class="hiw-flow-step">
+          <div class="hiw-flow-icon" style="background:#e3f2fd;">📅</div>
+          <div class="hiw-flow-label">Appointment Booked</div>
+          <div class="hiw-flow-sub">Hospital schedules patient</div>
+        </div>
+        <div class="hiw-flow-arrow">→</div>
+        <div class="hiw-flow-step">
+          <div class="hiw-flow-icon" style="background:#e3f2fd;">📞</div>
+          <div class="hiw-flow-label">Triage Call</div>
+          <div class="hiw-flow-sub">2–4 hrs before OPD</div>
+        </div>
+        <div class="hiw-flow-arrow">→</div>
+        <div class="hiw-flow-step">
+          <div class="hiw-flow-icon" style="background:#e8f5e9;">🩺</div>
+          <div class="hiw-flow-label">Doctor Visit</div>
+          <div class="hiw-flow-sub">Pre-filled intake form ready</div>
+        </div>
+        <div class="hiw-flow-arrow">→</div>
+        <div class="hiw-flow-step">
+          <div class="hiw-flow-icon" style="background:#f3e5f5;">🏠</div>
+          <div class="hiw-flow-label">Discharge</div>
+          <div class="hiw-flow-sub">Patient goes home</div>
+        </div>
+        <div class="hiw-flow-arrow">→</div>
+        <div class="hiw-flow-step">
+          <div class="hiw-flow-icon" style="background:#fce4ec;">📞</div>
+          <div class="hiw-flow-label">24hr Follow-up</div>
+          <div class="hiw-flow-sub">Prescription & danger signs</div>
+        </div>
+        <div class="hiw-flow-arrow">→</div>
+        <div class="hiw-flow-step">
+          <div class="hiw-flow-icon" style="background:#fce4ec;">📞</div>
+          <div class="hiw-flow-label">48hr Follow-up</div>
+          <div class="hiw-flow-sub">Symptom check</div>
+        </div>
+        <div class="hiw-flow-arrow">→</div>
+        <div class="hiw-flow-step">
+          <div class="hiw-flow-icon" style="background:#e8f5e9;">💊</div>
+          <div class="hiw-flow-label">Weekly Coaching</div>
+          <div class="hiw-flow-sub">Meds, diet, risk score</div>
+        </div>
+        <div class="hiw-flow-arrow">→</div>
+        <div class="hiw-flow-step">
+          <div class="hiw-flow-icon" style="background:#fff3e0;">📊</div>
+          <div class="hiw-flow-label">PRO Dataset</div>
+          <div class="hiw-flow-sub">Longitudinal data built</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">The tech stack powering every call</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;text-align:center;">
+        <div style="padding:16px;background:#f8faff;border-radius:10px;border:1px solid #e3f2fd;">
+          <div style="font-size:28px;margin-bottom:8px;">🎙️</div>
+          <div style="font-weight:700;font-size:13px;color:#1565c0;">Sarvam AI</div>
+          <div style="font-size:11px;color:#90a4ae;margin-top:4px;">Indic STT + TTS<br>Hindi, Bhojpuri, Marathi...</div>
+        </div>
+        <div style="padding:16px;background:#f8fff8;border-radius:10px;border:1px solid #e8f5e9;">
+          <div style="font-size:28px;margin-bottom:8px;">📞</div>
+          <div style="font-weight:700;font-size:13px;color:#2e7d32;">Exotel</div>
+          <div style="font-size:11px;color:#90a4ae;margin-top:4px;">Outbound call<br>orchestration</div>
+        </div>
+        <div style="padding:16px;background:#fdf8ff;border-radius:10px;border:1px solid #f3e5f5;">
+          <div style="font-size:28px;margin-bottom:8px;">🧠</div>
+          <div style="font-weight:700;font-size:13px;color:#6a1b9a;">Claude API</div>
+          <div style="font-size:11px;color:#90a4ae;margin-top:4px;">Adaptive NLP<br>Risk scoring</div>
+        </div>
+        <div style="padding:16px;background:#fffdf5;border-radius:10px;border:1px solid #fff3e0;">
+          <div style="font-size:28px;margin-bottom:8px;">⚡</div>
+          <div style="font-weight:700;font-size:13px;color:#e65100;">FastAPI + React</div>
+          <div style="font-size:11px;color:#90a4ae;margin-top:4px;">Backend + real-time<br>hospital dashboard</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stat-highlight">
+      <div class="stat-hl" style="background:linear-gradient(135deg,#1e88e5,#1565c0);color:white;">
+        <div class="n">100M+</div><div class="l">Diabetics in India who need this</div>
+      </div>
+      <div class="stat-hl" style="background:linear-gradient(135deg,#43a047,#2e7d32);color:white;">
+        <div class="n">~60%</div><div class="l">Non-adherence rate — the problem we solve</div>
+      </div>
+      <div class="stat-hl" style="background:linear-gradient(135deg,#7b1fa2,#4a1942);color:white;">
+        <div class="n">0</div><div class="l">Existing voice PRO tools in Indic languages</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ DASHBOARD ══════════════════════ -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-title">Hospital Dashboard</div>
+    <div class="page-sub">City General Hospital · Real-time patient engagement overview</div>
+    <div class="stats-row">
+      <div class="stat-card red"><div class="stat-val">3</div><div class="stat-lbl">🔴 RED — Needs Attention</div><div class="stat-change down">↑ 1 since yesterday</div></div>
+      <div class="stat-card amber"><div class="stat-val">11</div><div class="stat-lbl">🟡 AMBER — Watch</div><div class="stat-change down">↑ 3 this week</div></div>
+      <div class="stat-card green"><div class="stat-val">34</div><div class="stat-lbl">🟢 GREEN — Stable</div><div class="stat-change up">↑ 8 this week</div></div>
+      <div class="stat-card blue"><div class="stat-val">91%</div><div class="stat-lbl">📞 Call Completion Rate</div><div class="stat-change up">↑ 4% vs last week</div></div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Active Modules Today <span style="font-size:12px;color:#90a4ae;font-weight:400">48 patients enrolled</span></div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;"><span>🏥 Pre-arrival Triage</span><span style="font-weight:600;color:#1565c0;">18 calls</span></div><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:75%;background:#1e88e5;"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;"><span>🏠 Post-Discharge Follow-up</span><span style="font-weight:600;color:#6a1b9a;">12 calls</span></div><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:50%;background:#9c27b0;"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;"><span>💊 Chronic Disease Coach</span><span style="font-weight:600;color:#1b5e20;">24 calls</span></div><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:88%;background:#43a047;"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;"><span>👨‍👩‍👧 Caregiver Proxy</span><span style="font-weight:600;color:#e65100;">8 calls</span></div><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:33%;background:#fb8c00;"></div></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Weekly Adherence Trend</div>
+        <div class="bar-chart" id="adherence-chart"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Recent High-Risk Flags <button class="btn btn-danger btn-sm" onclick="showPage('escalation',document.querySelector('[onclick*=escalation]'))">View All →</button></div>
+      <table>
+        <thead><tr><th>Patient</th><th>Module</th><th>Risk</th><th>Flag Reason</th><th>Time</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr onclick="viewPatient('ramesh')"><td><strong>Ramesh Kumar</strong><br><span style="font-size:11px;color:#90a4ae;">Hindi · Diabetes</span></td><td><span class="module-badge mod-chronic">Chronic</span></td><td><span class="risk-badge risk-RED">RED</span></td><td>Sugar 380, missed 4 doses</td><td>2 hrs ago</td><td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();notifyDoctor('Ramesh Kumar')">Notify Doctor</button></td></tr>
+          <tr onclick="viewPatient('sunita')"><td><strong>Sunita Devi</strong><br><span style="font-size:11px;color:#90a4ae;">Bhojpuri · Hypertension</span></td><td><span class="module-badge mod-discharge">Post-Discharge</span></td><td><span class="risk-badge risk-RED">RED</span></td><td>Chest pain + breathlessness</td><td>4 hrs ago</td><td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();notifyDoctor('Sunita Devi')">Notify Doctor</button></td></tr>
+          <tr onclick="viewPatient('vijay')"><td><strong>Vijay Sharma</strong><br><span style="font-size:11px;color:#90a4ae;">Hindi · Post-Surgery</span></td><td><span class="module-badge mod-discharge">Post-Discharge</span></td><td><span class="risk-badge risk-RED">RED</span></td><td>Wound infection, fever 102°F</td><td>6 hrs ago</td><td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();notifyDoctor('Vijay Sharma')">Notify Doctor</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ PATIENTS ══════════════════════ -->
+  <div class="page" id="page-patients">
+    <div class="page-title">Patient Registry</div>
+    <div class="page-sub">All enrolled patients with real-time risk status</div>
+    <div class="card">
+      <div class="card-title">All Patients (48) <div style="display:flex;gap:8px;"><button class="btn btn-outline btn-sm">Filter</button><button class="btn btn-primary btn-sm">+ Add Patient</button></div></div>
+      <table>
+        <thead><tr><th>Name</th><th>Language</th><th>Condition</th><th>Modules</th><th>Last Call</th><th>Risk</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr onclick="viewPatient('ramesh')"><td><strong>Ramesh Kumar</strong><br><span style="font-size:11px;color:#90a4ae;">M, 58 · 9876543210</span></td><td><span class="lang-pill">Hindi</span></td><td>Diabetes Type 2</td><td><span class="module-badge mod-chronic">Chronic</span><span class="module-badge mod-triage">Triage</span></td><td>Today, 10:32 AM</td><td><span class="risk-badge risk-RED">RED</span></td><td><button class="btn btn-primary btn-sm" onclick="event.stopPropagation();showPage('call-sim',document.querySelector('[onclick*=call-sim]'))">Call Now</button></td></tr>
+          <tr onclick="viewPatient('sunita')"><td><strong>Sunita Devi</strong><br><span style="font-size:11px;color:#90a4ae;">F, 65 · 9988776655</span></td><td><span class="lang-pill" style="background:#fff3e0;color:#e65100;">Bhojpuri</span></td><td>Hypertension</td><td><span class="module-badge mod-discharge">Post-Discharge</span><span class="module-badge mod-caregiver">Caregiver</span></td><td>Today, 8:15 AM</td><td><span class="risk-badge risk-RED">RED</span></td><td><button class="btn btn-primary btn-sm" onclick="event.stopPropagation();showPage('caregiver',document.querySelector('[onclick*=caregiver]'))">Call Now</button></td></tr>
+          <tr onclick="viewPatient('vijay')"><td><strong>Vijay Sharma</strong><br><span style="font-size:11px;color:#90a4ae;">M, 45 · 9765432109</span></td><td><span class="lang-pill">Hindi</span></td><td>Post-Surgery (Knee)</td><td><span class="module-badge mod-discharge">Post-Discharge</span></td><td>Today, 7:50 AM</td><td><span class="risk-badge risk-RED">RED</span></td><td><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();">View</button></td></tr>
+          <tr><td><strong>Priya Patel</strong><br><span style="font-size:11px;color:#90a4ae;">F, 52</span></td><td><span class="lang-pill" style="background:#f3e5f5;color:#6a1b9a;">Marathi</span></td><td>Diabetes Type 2</td><td><span class="module-badge mod-chronic">Chronic</span></td><td>Yesterday</td><td><span class="risk-badge risk-AMBER">AMBER</span></td><td><button class="btn btn-outline btn-sm">View</button></td></tr>
+          <tr><td><strong>Mohan Das</strong><br><span style="font-size:11px;color:#90a4ae;">M, 70</span></td><td><span class="lang-pill" style="background:#fff3e0;color:#e65100;">Bhojpuri</span></td><td>Hypertension</td><td><span class="module-badge mod-chronic">Chronic</span><span class="module-badge mod-caregiver">Caregiver</span></td><td>2 days ago</td><td><span class="risk-badge risk-AMBER">AMBER</span></td><td><button class="btn btn-outline btn-sm">View</button></td></tr>
+          <tr><td><strong>Anita Singh</strong><br><span style="font-size:11px;color:#90a4ae;">F, 38</span></td><td><span class="lang-pill">Hindi</span></td><td>Diabetes Type 2</td><td><span class="module-badge mod-chronic">Chronic</span><span class="module-badge mod-triage">Triage</span></td><td>Today, 9:00 AM</td><td><span class="risk-badge risk-GREEN">GREEN</span></td><td><button class="btn btn-outline btn-sm">View</button></td></tr>
+          <tr><td><strong>Kavitha Rao</strong><br><span style="font-size:11px;color:#90a4ae;">F, 55</span></td><td><span class="lang-pill" style="background:#e8f5e9;color:#1b5e20;">Telugu</span></td><td>Post-Surgery (Hip)</td><td><span class="module-badge mod-discharge">Post-Discharge</span></td><td>Today, 6:45 AM</td><td><span class="risk-badge risk-GREEN">GREEN</span></td><td><button class="btn btn-outline btn-sm">View</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ PATIENT DETAIL ══════════════════════ -->
+  <div class="page" id="page-patient-detail">
+    <div class="back-btn" onclick="showPage('patients',document.querySelector('[onclick*=patients]'))">← Back to Patients</div>
+    <div class="detail-header">
+      <div class="detail-avatar" id="detail-avatar">RK</div>
+      <div class="detail-info">
+        <h2 id="detail-name">Ramesh Kumar</h2>
+        <p id="detail-meta">Male, 58 · Diabetes Type 2 · 9876543210</p>
+        <div class="detail-tags">
+          <span class="detail-tag dt-lang" id="detail-lang">Hindi</span>
+          <span class="detail-tag dt-cond" id="detail-cond">Diabetes</span>
+          <span class="detail-tag dt-mod">Chronic Coach</span>
+          <span class="detail-tag dt-mod">Pre-Triage</span>
+        </div>
+      </div>
+      <div style="margin-left:auto;text-align:right;">
+        <div id="detail-risk-badge" class="risk-badge risk-RED" style="font-size:14px;padding:6px 16px;">RED</div>
+        <div style="margin-top:10px;display:flex;gap:8px;">
+          <button class="btn btn-primary btn-sm" onclick="showPage('call-sim',document.querySelector('[onclick*=call-sim]'))">📞 Call Now</button>
+          <button class="btn btn-danger btn-sm" onclick="notifyDoctor('this patient')">🚨 Alert Doctor</button>
+        </div>
+      </div>
+    </div>
+    <div class="tab-row">
+      <div class="tab active" onclick="switchTab(this,'tab-history')">Call History</div>
+      <div class="tab" onclick="switchTab(this,'tab-adherence')">Adherence Trend</div>
+      <div class="tab" onclick="switchTab(this,'tab-structured')">Structured Data</div>
+    </div>
+    <div class="tab-content active" id="tab-history">
+      <div class="card">
+        <div class="card-title">Call History</div>
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-dot red"></div><div class="tl-date">Today · 10:32 AM · Chronic Coach · 3m 12s</div><div class="tl-title">⚠️ HIGH RISK — Sugar 380, 4 missed doses</div><div class="tl-body">Patient reported blood sugar of 380. Missed 4 doses — dawai khatam. Symptoms: chakkar, sujan. Risk: RED. Doctor notified.</div></div>
+          <div class="tl-item"><div class="tl-dot amber"></div><div class="tl-date">7 days ago · Chronic Coach · 2m 48s</div><div class="tl-title">AMBER — Sugar 260, 2 missed doses</div><div class="tl-body">Sugar 260. Missed 2 doses. Diet improving. Adherence barrier: forgetfulness.</div></div>
+          <div class="tl-item"><div class="tl-dot green"></div><div class="tl-date">14 days ago · Chronic Coach · 2m 05s</div><div class="tl-title">GREEN — Sugar 180, full adherence</div><div class="tl-body">All meds taken. Sugar 180 — within target. Good diet. No symptoms.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-adherence">
+      <div class="card">
+        <div class="card-title">4-Week Adherence Timeline</div>
+        <div class="bar-chart" id="patient-chart" style="height:120px;"></div>
+        <div style="margin-top:16px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+          <div style="text-align:center;padding:10px;background:#e8f5e9;border-radius:8px;"><div style="font-size:20px;font-weight:700;color:#2e7d32;">7/7</div><div style="font-size:11px;color:#607d8b;">Week 1</div></div>
+          <div style="text-align:center;padding:10px;background:#e8f5e9;border-radius:8px;"><div style="font-size:20px;font-weight:700;color:#2e7d32;">6/7</div><div style="font-size:11px;color:#607d8b;">Week 2</div></div>
+          <div style="text-align:center;padding:10px;background:#fff3e0;border-radius:8px;"><div style="font-size:20px;font-weight:700;color:#e65100;">5/7</div><div style="font-size:11px;color:#607d8b;">Week 3</div></div>
+          <div style="text-align:center;padding:10px;background:#ffebee;border-radius:8px;"><div style="font-size:20px;font-weight:700;color:#c62828;">3/7</div><div style="font-size:11px;color:#607d8b;">Week 4</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-structured">
+      <div class="card">
+        <div class="card-title">Latest Structured Output (Week 4)</div>
+        <div style="background:#1a1a2e;border-radius:10px;padding:20px;font-family:monospace;font-size:13px;color:#a5d6a7;line-height:2;">
+          {<br>&nbsp;&nbsp;<span style="color:#4fc3f7;">"patient_id"</span>: <span style="color:#ffe082;">"RK-001"</span>,<br>&nbsp;&nbsp;<span style="color:#4fc3f7;">"meds_taken"</span>: <span style="color:#ef9a9a;">false</span>,<br>&nbsp;&nbsp;<span style="color:#4fc3f7;">"doses_missed"</span>: <span style="color:#ef9a9a;">4</span>,<br>&nbsp;&nbsp;<span style="color:#4fc3f7;">"symptoms"</span>: [<span style="color:#ffe082;">"chakkar"</span>, <span style="color:#ffe082;">"sujan pair mein"</span>],<br>&nbsp;&nbsp;<span style="color:#4fc3f7;">"sugar_reading"</span>: <span style="color:#ffe082;">"380"</span>,<br>&nbsp;&nbsp;<span style="color:#4fc3f7;">"risk_tier"</span>: <span style="color:#ef9a9a;">"RED"</span>,<br>&nbsp;&nbsp;<span style="color:#4fc3f7;">"escalate_flag"</span>: <span style="color:#ef9a9a;">true</span><br>}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ CALL SIMULATION ══════════════════════ -->
+  <div class="page" id="page-call-sim">
+    <div class="page-title">Live Call Simulation</div>
+    <div class="page-sub">AI-powered chronic disease coaching call with Ramesh Kumar · Hindi</div>
+    <div class="two-col">
+      <div>
+        <div class="call-panel">
+          <div class="call-status" id="call-status-label">⬤ READY TO CALL</div>
+          <div class="call-patient-name">Ramesh Kumar</div>
+          <div class="call-meta">Hindi · Diabetes Type 2 · Weekly Chronic Coach · +91 9876543210</div>
+          <div class="call-waveform paused" id="waveform">
+            <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+          </div>
+          <div class="transcript-box" id="transcript-box"><div class="msg-system">— Transcript will appear here —</div></div>
+          <div class="call-controls">
+            <button class="btn btn-success" id="call-btn" onclick="startCall()">📞 Start Demo Call</button>
+            <button class="btn" style="background:rgba(255,255,255,0.1);color:white;" onclick="resetCall()">↺ Reset</button>
+            <button class="btn" style="background:#4fc3f7;color:#1a1a2e;font-weight:700;" onclick="openWatchMode()">⛶ Watch Mode</button>
+          </div>
+        </div>
+        <div class="card" style="margin-top:20px;">
+          <div class="card-title">Call State Machine</div>
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;" id="state-machine">
+            <div id="sn-idle" style="padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#e3f2fd;color:#1565c0;">IDLE</div>
+            <div style="color:#ccc;">→</div>
+            <div id="sn-dialing" style="padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#f5f5f5;color:#90a4ae;">DIALING</div>
+            <div style="color:#ccc;">→</div>
+            <div id="sn-greeting" style="padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#f5f5f5;color:#90a4ae;">GREETING</div>
+            <div style="color:#ccc;">→</div>
+            <div id="sn-questioning" style="padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#f5f5f5;color:#90a4ae;">QUESTIONING</div>
+            <div style="color:#ccc;">→</div>
+            <div id="sn-processing" style="padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#f5f5f5;color:#90a4ae;">PROCESSING</div>
+            <div style="color:#ccc;">→</div>
+            <div id="sn-complete" style="padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#f5f5f5;color:#90a4ae;">COMPLETE</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-title">Structured Output <span id="output-status" style="font-size:11px;color:#90a4ae;font-weight:400">— waiting —</span></div>
+          <div class="output-grid" id="output-grid">
+            <div class="output-item"><div class="ok">Meds Taken</div><div class="ov" id="out-meds">—</div></div>
+            <div class="output-item"><div class="ok">Doses Missed</div><div class="ov" id="out-doses">—</div></div>
+            <div class="output-item"><div class="ok">Sugar Reading</div><div class="ov" id="out-sugar">—</div></div>
+            <div class="output-item"><div class="ok">Symptoms</div><div class="ov" id="out-symptoms">—</div></div>
+            <div class="output-item"><div class="ok">Adherence Barrier</div><div class="ov" id="out-barrier">—</div></div>
+            <div class="output-item"><div class="ok">Diet</div><div class="ov" id="out-diet">—</div></div>
+          </div>
+          <div style="margin-top:16px;">
+            <div style="font-size:12px;color:#90a4ae;margin-bottom:6px;">Risk Score</div>
+            <div style="display:flex;border-radius:8px;overflow:hidden;height:14px;">
+              <div style="flex:1;background:#43a047;"></div><div style="flex:1;background:#fb8c00;"></div><div style="flex:1;background:#e53935;"></div>
+            </div>
+            <div id="risk-output" style="margin-top:10px;font-size:24px;font-weight:700;color:#90a4ae;">Awaiting call...</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">NLP Keyword Detection</div>
+          <div id="keyword-feed" style="font-size:13px;color:#607d8b;min-height:60px;">Keywords detected in real-time during call...</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Sarvam AI — Language</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div style="padding:10px;background:#f8fafc;border-radius:8px;text-align:center;"><div style="font-size:11px;color:#90a4ae;">Detected</div><div style="font-size:18px;font-weight:700;color:#1565c0;" id="lang-detected">—</div></div>
+            <div style="padding:10px;background:#f8fafc;border-radius:8px;text-align:center;"><div style="font-size:11px;color:#90a4ae;">Code-switch</div><div style="font-size:18px;font-weight:700;color:#6a1b9a;" id="code-switch">—</div></div>
+            <div style="padding:10px;background:#f8fafc;border-radius:8px;text-align:center;"><div style="font-size:11px;color:#90a4ae;">STT Confidence</div><div style="font-size:18px;font-weight:700;color:#43a047;" id="stt-conf">—</div></div>
+            <div style="padding:10px;background:#f8fafc;border-radius:8px;text-align:center;"><div style="font-size:11px;color:#90a4ae;">Sentiment</div><div style="font-size:18px;font-weight:700;" id="sentiment">—</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ CAREGIVER PROXY ══════════════════════ -->
+  <div class="page" id="page-caregiver">
+    <div class="page-title">Caregiver Proxy Module</div>
+    <div class="page-sub">When the patient can't answer — we call the family instead</div>
+
+    <div class="cg-banner">
+      <div class="cg-icon-big">👨‍👩‍👧</div>
+      <div>
+        <h2>India's healthcare decisions are made by families, not patients</h2>
+        <p>65% of our flagged patients are elderly or low-literacy. AarogyaVaani detects this and automatically routes the call to the designated family caregiver — in their language — collecting proxy health data on behalf of the patient.</p>
+      </div>
+    </div>
+
+    <div class="cg-routing-box">
+      <div class="cg-routing-title">How caregiver routing works</div>
+      <div class="cg-routing-flow">
+        <div class="cg-routing-step">
+          <div class="cg-routing-circle" style="background:#e3f2fd;">🤖</div>
+          <div class="cg-routing-label">System checks patient profile</div>
+        </div>
+        <div class="cg-routing-arrow">→</div>
+        <div class="cg-routing-step">
+          <div class="cg-routing-circle" style="background:#fff3e0;">❓</div>
+          <div class="cg-routing-label">caregiver_primary = true OR age 65+?</div>
+        </div>
+        <div class="cg-routing-arrow">→</div>
+        <div class="cg-routing-step">
+          <div class="cg-routing-circle" style="background:#f3e5f5;">📞</div>
+          <div class="cg-routing-label">Dial caregiver phone instead</div>
+        </div>
+        <div class="cg-routing-arrow">→</div>
+        <div class="cg-routing-step">
+          <div class="cg-routing-circle" style="background:#fce4ec;">🗣️</div>
+          <div class="cg-routing-label">Greeting in caregiver's language</div>
+        </div>
+        <div class="cg-routing-arrow">→</div>
+        <div class="cg-routing-step">
+          <div class="cg-routing-circle" style="background:#e8f5e9;">📊</div>
+          <div class="cg-routing-label">Responses logged against patient profile</div>
+        </div>
+        <div class="cg-routing-arrow">→</div>
+        <div class="cg-routing-step">
+          <div class="cg-routing-circle" style="background:#e8f5e9;">✅</div>
+          <div class="cg-routing-label">Risk scored · Doctor alerted if RED</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="call-panel">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+            <div class="call-status" id="cg-status-label">⬤ READY</div>
+            <span style="font-size:11px;background:rgba(255,224,130,0.2);color:#ffe082;padding:2px 10px;border-radius:20px;font-weight:600;">👨‍👩‍👧 CAREGIVER PROXY MODE</span>
+          </div>
+          <div class="call-patient-name">Sunita Devi <span style="font-size:14px;color:#90caf9;font-weight:400">via Son — Rajesh</span></div>
+          <div class="call-meta">Patient: F, 65 · Hypertension · Bhojpuri · Post-Discharge Day 2<br>Caregiver: Rajesh Kumar (Son) · +91 9123456789</div>
+          <div class="call-waveform paused" id="cg-waveform">
+            <div class="wave-bar" style="background:#ffe082;"></div><div class="wave-bar" style="background:#ffe082;"></div>
+            <div class="wave-bar" style="background:#ffe082;"></div><div class="wave-bar" style="background:#ffe082;"></div>
+            <div class="wave-bar" style="background:#ffe082;"></div><div class="wave-bar" style="background:#ffe082;"></div>
+            <div class="wave-bar" style="background:#ffe082;"></div><div class="wave-bar" style="background:#ffe082;"></div>
+            <div class="wave-bar" style="background:#ffe082;"></div><div class="wave-bar" style="background:#ffe082;"></div>
+            <div class="wave-bar" style="background:#ffe082;"></div><div class="wave-bar" style="background:#ffe082;"></div>
+          </div>
+          <div class="transcript-box" id="cg-transcript"><div class="msg-system">— Caregiver proxy call transcript —</div></div>
+          <div class="call-controls">
+            <button class="btn btn-success" id="cg-btn" onclick="startCgCall()">📞 Start Caregiver Call</button>
+            <button class="btn" style="background:rgba(255,255,255,0.1);color:white;" onclick="resetCgCall()">↺ Reset</button>
+            <button class="btn" style="background:#ffe082;color:#1a1a2e;font-weight:700;" onclick="openCgWatchMode()">⛶ Watch Mode</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <div class="card-title">Patient Profile — Sunita Devi</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;">
+            <div style="padding:10px;background:#fdf4ff;border-radius:8px;"><div style="font-size:11px;color:#90a4ae;">Age</div><div style="font-weight:600;">65 years</div></div>
+            <div style="padding:10px;background:#fdf4ff;border-radius:8px;"><div style="font-size:11px;color:#90a4ae;">Language</div><div style="font-weight:600;color:#e65100;">Bhojpuri</div></div>
+            <div style="padding:10px;background:#fdf4ff;border-radius:8px;"><div style="font-size:11px;color:#90a4ae;">Condition</div><div style="font-weight:600;">Hypertension</div></div>
+            <div style="padding:10px;background:#fdf4ff;border-radius:8px;"><div style="font-size:11px;color:#90a4ae;">Caregiver Primary</div><div style="font-weight:600;color:#7b1fa2;">YES ✓</div></div>
+            <div style="padding:10px;background:#fdf4ff;border-radius:8px;"><div style="font-size:11px;color:#90a4ae;">Caregiver Name</div><div style="font-weight:600;">Rajesh Kumar (Son)</div></div>
+            <div style="padding:10px;background:#fdf4ff;border-radius:8px;"><div style="font-size:11px;color:#90a4ae;">Caregiver Phone</div><div style="font-weight:600;">9123456789</div></div>
+          </div>
+          <div style="margin-top:12px;padding:10px;background:#ffebee;border-radius:8px;border-left:4px solid #e53935;">
+            <div style="font-size:12px;font-weight:700;color:#c62828;">⚠️ Why caregiver proxy triggered</div>
+            <div style="font-size:12px;color:#607d8b;margin-top:4px;">Patient is 65+ AND caregiver_primary flag is set. System automatically routed to Rajesh's number instead of Sunita's.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Caregiver Call Output</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div style="padding:10px;background:#f8fafc;border-radius:8px;"><div style="font-size:11px;color:#90a4ae;">Answered By</div><div style="font-size:15px;font-weight:700;" id="cg-answered">—</div></div>
+            <div style="padding:10px;background:#f8fafc;border-radius:8px;"><div style="font-size:11px;color:#90a4ae;">Language Used</div><div style="font-size:15px;font-weight:700;" id="cg-lang">—</div></div>
+            <div style="padding:10px;background:#f8fafc;border-radius:8px;"><div style="font-size:11px;color:#90a4ae;">Meds Taken</div><div style="font-size:15px;font-weight:700;" id="cg-meds">—</div></div>
+            <div style="padding:10px;background:#f8fafc;border-radius:8px;"><div style="font-size:11px;color:#90a4ae;">Symptoms Reported</div><div style="font-size:15px;font-weight:700;" id="cg-symptoms">—</div></div>
+          </div>
+          <div style="margin-top:12px;">
+            <div style="font-size:12px;color:#90a4ae;margin-bottom:6px;">Risk Score</div>
+            <div id="cg-risk" style="font-size:22px;font-weight:700;color:#90a4ae;">Awaiting call...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ ESCALATIONS ══════════════════════ -->
+  <div class="page" id="page-escalation">
+    <div class="page-title">Escalation Queue</div>
+    <div class="page-sub">3 patients require immediate doctor attention</div>
+    <div class="card" style="border-left:4px solid #e53935;background:#fff8f8;">
+      <div class="card-title" style="color:#c62828;">🚨 Active Alerts — Doctors not yet notified for 2 patients</div>
+    </div>
+    <div class="esc-card">
+      <div class="esc-icon">👴</div>
+      <div class="esc-info">
+        <div class="esc-name">Ramesh Kumar <span style="font-size:12px;font-weight:400;color:#90a4ae;">· M, 58 · Diabetes · Hindi</span></div>
+        <div class="esc-reason">Sugar 380 · Missed 4 doses · chakkar, sujan pair mein · dawai khatam</div>
+        <div class="esc-time">⏰ Flagged 2 hrs ago · Chronic Coach · 3m 12s</div>
+      </div>
+      <div class="esc-actions">
+        <button class="btn btn-danger" onclick="notifyDoctor('Ramesh Kumar')">🚨 Notify Dr. Mehta</button>
+        <button class="btn btn-outline btn-sm" onclick="viewPatient('ramesh')">View Record</button>
+      </div>
+    </div>
+    <div class="esc-card">
+      <div class="esc-icon">👵</div>
+      <div class="esc-info">
+        <div class="esc-name">Sunita Devi <span style="font-size:12px;font-weight:400;color:#90a4ae;">· F, 65 · Hypertension · Bhojpuri · via Caregiver</span></div>
+        <div class="esc-reason">Chest pain · Breathlessness · BP 190 · Missed 3 doses · Answered by: Son (Rajesh)</div>
+        <div class="esc-time">⏰ Flagged 4 hrs ago · Post-Discharge · Caregiver Proxy</div>
+      </div>
+      <div class="esc-actions">
+        <button class="btn btn-danger" onclick="notifyDoctor('Sunita Devi')">🚨 Notify Dr. Sharma</button>
+        <button class="btn btn-outline btn-sm">View Record</button>
+      </div>
+    </div>
+    <div class="esc-card" style="border-left-color:#fb8c00;">
+      <div class="esc-icon">🧑</div>
+      <div class="esc-info">
+        <div class="esc-name">Vijay Sharma <span style="font-size:12px;font-weight:400;color:#90a4ae;">· M, 45 · Post-Surgery · Hindi</span></div>
+        <div class="esc-reason">Wound redness · Fever 102°F · Swelling at incision · Prescription not filled</div>
+        <div class="esc-time">⏰ Flagged 6 hrs ago · Post-Discharge 48hr call</div>
+      </div>
+      <div class="esc-actions">
+        <button class="btn btn-danger" onclick="notifyDoctor('Vijay Sharma')">🚨 Notify Dr. Gupta</button>
+        <button class="btn btn-outline btn-sm">View Record</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ WORKFLOW ══════════════════════ -->
+  <div class="page" id="page-workflow">
+    <div class="page-title">Workflow Builder</div>
+    <div class="page-sub">Configure call scripts per disease type — no coding required</div>
+    <div class="two-col">
+      <div>
+        <div class="card">
+          <div class="card-title">Template: Diabetes — Weekly Coach <button class="btn btn-success btn-sm">✓ Save</button></div>
+          <div class="wf-canvas">
+            <div class="wf-block"><div class="wf-block-icon">👋</div><div class="wf-block-content"><div class="wf-block-type">Greeting</div><div class="wf-block-q">Namaste! Main AarogyaVaani se bol raha hoon. Kya aap [Name] ji bol rahe hain?</div><div class="wf-block-q-hi">Hello! This is AarogyaVaani. Am I speaking with [Name]?</div></div><span class="wf-block-badge badge-yn">Y/N</span></div>
+            <div class="wf-connector">↓</div>
+            <div class="wf-block"><div class="wf-block-icon">💊</div><div class="wf-block-content"><div class="wf-block-type">Mandatory</div><div class="wf-block-q">Kya aapne aaj ki dawai li?</div><div class="wf-block-q-hi">Did you take today's medication?</div></div><span class="wf-block-badge badge-yn">Y/N</span></div>
+            <div class="wf-connector">↓</div>
+            <div class="wf-block conditional"><div class="wf-block-icon">⚡</div><div class="wf-block-content"><div class="wf-block-type">Conditional — if NO</div><div class="wf-block-q">Kyon nahi li? Dawai khatam ya koi aur wajah?</div><div class="wf-block-q-hi">Why not? Ran out or another reason?</div></div><span class="wf-block-badge badge-cond">IF NO</span></div>
+            <div class="wf-connector">↓</div>
+            <div class="wf-block"><div class="wf-block-icon">🩸</div><div class="wf-block-content"><div class="wf-block-type">Optional</div><div class="wf-block-q">Kya sugar test hua? Kitna tha reading?</div><div class="wf-block-q-hi">Did you check blood sugar? What was the reading?</div></div><span class="wf-block-badge badge-open">Open</span></div>
+            <div class="wf-connector">↓</div>
+            <div class="wf-block"><div class="wf-block-icon">😷</div><div class="wf-block-content"><div class="wf-block-type">Mandatory</div><div class="wf-block-q">Koi naya takleef? Chakkar, sujan, aankhon mein dikkat?</div><div class="wf-block-q-hi">Any new symptoms? Dizziness, swelling, vision issues?</div></div><span class="wf-block-badge badge-open">Open</span></div>
+            <div class="wf-connector">↓</div>
+            <div class="wf-block closing"><div class="wf-block-icon">✅</div><div class="wf-block-content"><div class="wf-block-type">Closing</div><div class="wf-block-q">Shukriya! Doctor ko data bheja ja raha hai. Apna khayal rakhein.</div><div class="wf-block-q-hi">Thank you! Data sent to your doctor. Take care!</div></div><span class="wf-block-badge" style="background:#e8f5e9;color:#1b5e20;">End</span></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-title">Saved Templates</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="padding:12px;border:1px solid #e3f2fd;border-radius:8px;background:#f8faff;"><div style="font-weight:600;font-size:13px;">💊 Diabetes — Weekly Coach</div><div style="font-size:11px;color:#90a4ae;margin-top:3px;">6 questions · Hindi/Bhojpuri/Marathi · 24 patients</div></div>
+            <div style="padding:12px;border:1px solid #f3e5f5;border-radius:8px;"><div style="font-weight:600;font-size:13px;">❤️ Hypertension — Weekly Coach</div><div style="font-size:11px;color:#90a4ae;margin-top:3px;">5 questions · Hindi/Bengali · 18 patients</div></div>
+            <div style="padding:12px;border:1px solid #fce4ec;border-radius:8px;"><div style="font-weight:600;font-size:13px;">🏥 Post-Discharge — 48hr Follow-up</div><div style="font-size:11px;color:#90a4ae;margin-top:3px;">7 questions · All Indic languages · 12 patients</div></div>
+            <div style="padding:12px;border:1px solid #e8f5e9;border-radius:8px;"><div style="font-weight:600;font-size:13px;">🏃 Pre-arrival OPD Triage</div><div style="font-size:11px;color:#90a4ae;margin-top:3px;">4 questions · Hindi · 18 patients</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Language Coverage</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span>🇮🇳 Hindi</span><div style="flex:1;margin:0 12px;"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:100%;background:#1e88e5;"></div></div></div><span style="font-weight:600;color:#1565c0;">All modules</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span>Bhojpuri</span><div style="flex:1;margin:0 12px;"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:80%;background:#7b1fa2;"></div></div></div><span style="font-weight:600;color:#7b1fa2;">4/5</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span>Marathi</span><div style="flex:1;margin:0 12px;"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:80%;background:#00897b;"></div></div></div><span style="font-weight:600;color:#00897b;">4/5</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span>Bengali</span><div style="flex:1;margin:0 12px;"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:60%;background:#f57c00;"></div></div></div><span style="font-weight:600;color:#f57c00;">3/5</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ ANALYTICS ══════════════════════ -->
+  <div class="page" id="page-analytics">
+    <div class="page-title">Analytics</div>
+    <div class="page-sub">Platform-wide performance — last 30 days</div>
+    <div class="stats-row">
+      <div class="stat-card blue"><div class="stat-val">2,841</div><div class="stat-lbl">Total Calls Made</div><div class="stat-change up">↑ 18% vs last month</div></div>
+      <div class="stat-card green"><div class="stat-val">68%</div><div class="stat-lbl">Avg Adherence Rate</div><div class="stat-change up">↑ 22% since enrollment</div></div>
+      <div class="stat-card amber"><div class="stat-val">34%</div><div class="stat-lbl">OPD Revisit Reduction</div><div class="stat-change up">↓ Unnecessary visits saved</div></div>
+      <div class="stat-card red"><div class="stat-val">47</div><div class="stat-lbl">Early Escalations</div><div class="stat-change up">Prevented complications</div></div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Adherence Rate — Last 8 Weeks</div>
+        <div class="bar-chart" id="analytics-chart" style="height:120px;"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Call Outcomes Breakdown</div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+          <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;"><span>✅ Completed — Patient answered</span><span style="font-weight:600;">74%</span></div><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:74%;background:#43a047;"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;"><span>👨‍👩‍👧 Completed — Caregiver answered</span><span style="font-weight:600;">17%</span></div><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:17%;background:#fb8c00;"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;"><span>📩 Fallback — WhatsApp sent</span><span style="font-weight:600;">6%</span></div><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:6%;background:#1e88e5;"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;"><span>❌ No response</span><span style="font-weight:600;">3%</span></div><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:3%;background:#e53935;"></div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Language Distribution — Calls This Month</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;text-align:center;">
+        <div style="padding:16px;background:#e3f2fd;border-radius:10px;"><div style="font-size:28px;font-weight:700;color:#1565c0;">1,240</div><div style="font-size:12px;color:#607d8b;margin-top:4px;">Hindi</div><div style="font-size:11px;color:#90a4ae;">44%</div></div>
+        <div style="padding:16px;background:#fce4ec;border-radius:10px;"><div style="font-size:28px;font-weight:700;color:#880e4f;">612</div><div style="font-size:12px;color:#607d8b;margin-top:4px;">Bhojpuri</div><div style="font-size:11px;color:#90a4ae;">22%</div></div>
+        <div style="padding:16px;background:#f3e5f5;border-radius:10px;"><div style="font-size:28px;font-weight:700;color:#6a1b9a;">498</div><div style="font-size:12px;color:#607d8b;margin-top:4px;">Marathi</div><div style="font-size:11px;color:#90a4ae;">18%</div></div>
+        <div style="padding:16px;background:#e8f5e9;border-radius:10px;"><div style="font-size:28px;font-weight:700;color:#1b5e20;">336</div><div style="font-size:12px;color:#607d8b;margin-top:4px;">Bengali</div><div style="font-size:11px;color:#90a4ae;">12%</div></div>
+        <div style="padding:16px;background:#fff3e0;border-radius:10px;"><div style="font-size:28px;font-weight:700;color:#e65100;">155</div><div style="font-size:12px;color:#607d8b;margin-top:4px;">Telugu</div><div style="font-size:11px;color:#90a4ae;">4%</div></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end main -->
+</div><!-- end layout -->
+
+<!-- ══════════════════════ WATCH MODE OVERLAY (CHRONIC CALL) ══════════════════════ -->
+<div class="watchmode-overlay" id="watchmode">
+  <div class="wm-close" onclick="closeWatchMode()">✕ Exit Watch Mode</div>
+  <div class="wm-top">
+    <div class="wm-avatar">RK</div>
+    <div>
+      <div class="wm-name">Ramesh Kumar</div>
+      <div class="wm-meta">Hindi · Diabetes Type 2 · Weekly Chronic Coach</div>
+      <div class="wm-state" id="wm-state">Waiting to start...</div>
+    </div>
+    <div style="margin-left:auto;text-align:right;">
+      <div id="wm-risk-chip" style="font-size:18px;font-weight:700;color:#90caf9;">Risk: —</div>
+      <div style="font-size:12px;color:#546e7a;margin-top:4px;">Updates live</div>
+    </div>
+  </div>
+  <div class="wm-waveform paused" id="wm-waveform">
+    <div class="wm-bar"></div><div class="wm-bar"></div><div class="wm-bar"></div>
+    <div class="wm-bar"></div><div class="wm-bar"></div><div class="wm-bar"></div>
+    <div class="wm-bar"></div><div class="wm-bar"></div><div class="wm-bar"></div>
+    <div class="wm-bar"></div><div class="wm-bar"></div><div class="wm-bar"></div>
+    <div class="wm-bar"></div><div class="wm-bar"></div><div class="wm-bar"></div>
+  </div>
+  <div class="wm-bubble-wrap" id="wm-bubble-area">
+    <div class="wm-bubble system"><div class="wm-bubble-who">System</div><div class="wm-bubble-text">Press Start in the background panel, or close watch mode and click Start Demo Call first.</div></div>
+  </div>
+  <div class="wm-risk-bar">
+    <div class="wm-risk-label">Risk Level</div>
+    <div class="wm-risk-track">
+      <div class="wm-risk-seg green" id="wm-seg-g"></div>
+      <div class="wm-risk-seg amber" id="wm-seg-a"></div>
+      <div class="wm-risk-seg red" id="wm-seg-r"></div>
+    </div>
+    <div class="wm-risk-text" id="wm-risk-text" style="color:#4fc3f7;">Awaiting call...</div>
+  </div>
+  <div class="wm-keywords" id="wm-keywords"></div>
+</div>
+
+<!-- ══════════════════════ WATCH MODE OVERLAY (CAREGIVER CALL) ══════════════════════ -->
+<div class="watchmode-overlay" id="cg-watchmode">
+  <div class="wm-close" onclick="closeCgWatchMode()">✕ Exit Watch Mode</div>
+  <div class="wm-top">
+    <div class="wm-avatar" style="background:#ffe082;color:#1a1a2e;">SD</div>
+    <div>
+      <div class="wm-name">Sunita Devi <span style="font-size:15px;font-weight:400;color:#90caf9;">via Son — Rajesh</span></div>
+      <div class="wm-meta">Bhojpuri · Hypertension · Post-Discharge Day 2 · Caregiver Proxy</div>
+      <div class="wm-state" id="cg-wm-state">Waiting to start...</div>
+    </div>
+    <div style="margin-left:auto;"><div id="cg-wm-risk-chip" style="font-size:18px;font-weight:700;color:#90caf9;">Risk: —</div></div>
+  </div>
+  <div class="wm-waveform paused" id="cg-wm-waveform">
+    <div class="wm-bar" style="background:#ffe082;"></div><div class="wm-bar" style="background:#ffe082;"></div>
+    <div class="wm-bar" style="background:#ffe082;"></div><div class="wm-bar" style="background:#ffe082;"></div>
+    <div class="wm-bar" style="background:#ffe082;"></div><div class="wm-bar" style="background:#ffe082;"></div>
+    <div class="wm-bar" style="background:#ffe082;"></div><div class="wm-bar" style="background:#ffe082;"></div>
+    <div class="wm-bar" style="background:#ffe082;"></div><div class="wm-bar" style="background:#ffe082;"></div>
+    <div class="wm-bar" style="background:#ffe082;"></div><div class="wm-bar" style="background:#ffe082;"></div>
+  </div>
+  <div class="wm-bubble-wrap" id="cg-wm-bubble-area">
+    <div class="wm-bubble system"><div class="wm-bubble-who">System</div><div class="wm-bubble-text">Press Start Caregiver Call first, then open Watch Mode.</div></div>
+  </div>
+  <div class="wm-risk-bar">
+    <div class="wm-risk-label">Risk Level</div>
+    <div class="wm-risk-track">
+      <div class="wm-risk-seg green" id="cg-wm-seg-g"></div>
+      <div class="wm-risk-seg amber" id="cg-wm-seg-a"></div>
+      <div class="wm-risk-seg red" id="cg-wm-seg-r"></div>
+    </div>
+    <div class="wm-risk-text" id="cg-wm-risk-text" style="color:#4fc3f7;">Awaiting call...</div>
+  </div>
+  <div class="wm-keywords" id="cg-wm-keywords"></div>
+</div>
+
+<script>
+// ── NAVIGATION ──
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (el) el.classList.add('active');
+  if (id === 'analytics') { setTimeout(drawAnalyticsChart, 100); }
+  if (id === 'dashboard') { setTimeout(drawAdherenceChart, 100); }
+}
+
+function viewPatient(id) {
+  const pts = {
+    ramesh: { avatar:'RK', name:'Ramesh Kumar', meta:'Male, 58 · Diabetes Type 2 · 9876543210', lang:'Hindi', cond:'Diabetes', risk:'RED' },
+    sunita: { avatar:'SD', name:'Sunita Devi', meta:'Female, 65 · Hypertension · 9988776655', lang:'Bhojpuri', cond:'Hypertension', risk:'RED' },
+    vijay:  { avatar:'VS', name:'Vijay Sharma', meta:'Male, 45 · Post-Surgery · 9765432109', lang:'Hindi', cond:'Post-Surgery', risk:'RED' }
+  };
+  const p = pts[id]; if (!p) return;
+  document.getElementById('detail-avatar').textContent = p.avatar;
+  document.getElementById('detail-name').textContent = p.name;
+  document.getElementById('detail-meta').textContent = p.meta;
+  document.getElementById('detail-lang').textContent = p.lang;
+  document.getElementById('detail-cond').textContent = p.cond;
+  const rb = document.getElementById('detail-risk-badge');
+  rb.textContent = p.risk; rb.className = 'risk-badge risk-' + p.risk;
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===0));
+  document.querySelectorAll('.tab-content').forEach((t,i) => t.classList.toggle('active', i===0));
+  document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
+  document.getElementById('page-patient-detail').classList.add('active');
+  setTimeout(drawPatientChart, 100);
+}
+
+function switchTab(el, targetId) {
+  el.closest('.tab-row').querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  el.closest('.page').querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById(targetId).classList.add('active');
+  if (targetId === 'tab-adherence') setTimeout(drawPatientChart, 100);
+}
+
+// ── HOW IT WORKS ──
+const hiwDetails = [
+  { title:'🏥 Pre-Arrival Voice Triage', body:'2–4 hours before the OPD appointment, AarogyaVaani calls the patient in their language. It collects the chief complaint, pain scale (1–10), duration of symptoms, and any prior meds taken. It detects urgency keywords like "chest pain" or "breathlessness" and immediately SMS-escalates to the doctor. The structured intake form is pre-filled on the doctor\'s screen before the patient even walks in — saving 5–7 minutes per consultation.', bg:'linear-gradient(135deg,#1e88e5,#1565c0)' },
+  { title:'🏠 Post-Discharge Follow-up', body:'Within 24 and 48 hours of discharge, the system calls automatically. It checks whether the patient filled their prescription, understands their medication schedule, and has developed any new symptoms. Danger sign keywords (fever + wound redness for post-surgery, chest pain + breathlessness for cardiac) trigger an immediate RED flag and doctor SMS. This is the highest-risk window — most readmissions happen here.', bg:'linear-gradient(135deg,#7b1fa2,#4a1942)' },
+  { title:'💊 Chronic Disease Coach', body:'Every week, a personalised voice call goes out to diabetes and hypertension patients. It asks about medication adherence, blood sugar / BP readings, diet, and symptoms — in natural conversational Hindi, Bhojpuri, or Marathi. The AI adaptively follows up on concerning answers. Every response is stored as a structured weekly record — building a longitudinal patient-reported outcomes (PRO) dataset that has real commercial value to insurers and pharma companies.', bg:'linear-gradient(135deg,#2e7d32,#1b5e20)' },
+  { title:'👨‍👩‍👧 Caregiver Proxy Interface', body:'India is different. Healthcare decisions are made by families. For patients who are elderly, low-literacy, or physically unable to take calls, AarogyaVaani detects this from the patient profile and routes the entire call to the designated family caregiver instead. The caregiver\'s responses are logged against the patient\'s record with source = caregiver. This is the only voice health platform in the world designed around the Indian family unit.', bg:'linear-gradient(135deg,#e65100,#bf360c)' }
+];
+
+function showHiwDetail(i) {
+  const box = document.getElementById('hiw-detail-box');
+  const d = hiwDetails[i];
+  document.getElementById('hiw-detail-title').textContent = d.title;
+  document.getElementById('hiw-detail-body').textContent = d.body;
+  box.style.background = d.bg;
+  box.style.display = 'block';
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── CHARTS ──
+function drawBarChart(elId, weeks, vals, height, colorFn) {
+  const el = document.getElementById(elId); if (!el) return;
+  el.innerHTML = '';
+  vals.forEach((v, i) => {
+    const w = document.createElement('div'); w.className = 'bar-wrap';
+    const bv = document.createElement('div'); bv.className = 'bar-val'; bv.textContent = v + '%';
+    const b = document.createElement('div'); b.className = 'bar';
+    b.style.height = '0px'; b.style.background = colorFn(v);
+    const l = document.createElement('div'); l.className = 'bar-lbl'; l.textContent = weeks[i];
+    w.appendChild(bv); w.appendChild(b); w.appendChild(l); el.appendChild(w);
+    setTimeout(() => { b.style.height = (v * height / 100) + 'px'; }, 100 + i * 80);
+  });
+}
+
+function drawAdherenceChart() { drawBarChart('adherence-chart',['W1','W2','W3','W4','W5','W6','W7','W8'],[72,74,69,76,78,75,80,82],64,v=>v>=75?'#43a047':v>=65?'#fb8c00':'#e53935'); }
+function drawPatientChart()   { drawBarChart('patient-chart',['Wk1','Wk2','Wk3','Wk4'],[100,86,71,43],110,v=>v>=80?'#43a047':v>=60?'#fb8c00':'#e53935'); }
+function drawAnalyticsChart() { drawBarChart('analytics-chart',['W1','W2','W3','W4','W5','W6','W7','W8'],[55,58,60,62,65,66,68,70],110,()=>'#1e88e5'); }
+
+// ── CALL SIM SHARED ──
+function setCallState(state) {
+  ['idle','dialing','greeting','questioning','processing','complete'].forEach(s => {
+    const el = document.getElementById('sn-'+s); if (!el) return;
+    el.style.background = '#f5f5f5'; el.style.color = '#90a4ae';
+  });
+  const a = document.getElementById('sn-'+state);
+  if (a) { a.style.background = '#4fc3f7'; a.style.color = '#1a1a2e'; }
+}
+
+function addMsg(boxId, type, text) {
+  const box = document.getElementById(boxId);
+  const div = document.createElement('div');
+  const cls = {ai:'msg-ai',patient:'msg-patient',caregiver:'msg-caregiver',system:'msg-system'};
+  div.className = cls[type] || 'msg-system';
+  const labels = {ai:'AI ▶',patient:'Patient ▶',caregiver:'Caregiver ▶'};
+  if (labels[type]) div.innerHTML = '<span>'+labels[type]+'</span>'+text;
+  else div.textContent = text;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function addWmBubble(overlayId, type, text) {
+  const area = document.getElementById(overlayId);
+  area.innerHTML = '';
+  const div = document.createElement('div');
+  div.className = 'wm-bubble ' + type;
+  const labels = {ai:'AarogyaVaani AI',patient:'Ramesh Kumar (Patient)',caregiver:'Rajesh Kumar (Son · Caregiver)',system:'System'};
+  div.innerHTML = '<div class="wm-bubble-who">'+labels[type]+'</div><div class="wm-bubble-text">'+text+'</div>';
+  area.appendChild(div);
+}
+
+function addWmKeyword(kwId, text, tier) {
+  const kw = document.getElementById(kwId);
+  const span = document.createElement('span');
+  span.className = 'wm-kw ' + tier;
+  span.textContent = text;
+  kw.appendChild(span);
+}
+
+function setWmRisk(prefix, tier) {
+  const colors = { GREEN:'#a5d6a7', AMBER:'#ffe082', RED:'#ef9a9a' };
+  const segs = ['g','a','r'];
+  const active = { GREEN:['g'], AMBER:['g','a'], RED:['g','a','r'] };
+  segs.forEach(s => {
+    const el = document.getElementById((prefix?prefix+'-':'')+'wm-seg-'+s);
+    if (el) el.classList.toggle('active', (active[tier]||[]).includes(s));
+  });
+  const rt = document.getElementById((prefix?prefix+'-':'')+'wm-risk-text');
+  if (rt) { rt.textContent = tier === 'GREEN' ? '🟢 LOW RISK — GREEN' : tier === 'AMBER' ? '🟡 WATCH — AMBER' : '🔴 HIGH RISK — RED'; rt.style.color = colors[tier]; }
+  const rc = document.getElementById((prefix?prefix+'-':'')+'wm-risk-chip');
+  if (rc) { rc.textContent = 'Risk: ' + tier; rc.style.color = colors[tier]; }
+}
+
+// ── MAIN CALL SIMULATION ──
+let callRunning = false;
+const callScript = [
+  { delay:800,   type:'system',     text:'📡 Connecting to Sarvam AI Voice Engine...', wm:true },
+  { delay:1800,  type:'system',     text:'📞 Dialing +91 9876543210 via Exotel...', wmState:'DIALING', wm:true },
+  { delay:3200,  type:'system',     text:'✅ Call connected · Identity verification...', wm:true },
+  { delay:4200,  type:'ai',         text:'Namaste Ramesh ji! Main AarogyaVaani se bol raha hoon. Kya aap theek hain?', state:'greeting', wmState:'GREETING' },
+  { delay:6500,  type:'patient',    text:'Haan, main Ramesh bol raha hoon. Kaun hai?' },
+  { delay:7500,  type:'system',     text:'🔍 Sarvam STT: Hindi detected · Confidence 94%', langUpdate:true, wm:true },
+  { delay:8500,  type:'ai',         text:'Aapka weekly health check-in call hai. Kya aapne aaj ki dawai li, Ramesh ji?', state:'questioning', wmState:'QUESTIONING' },
+  { delay:11000, type:'patient',    text:'Nahi ji... dawai khatam ho gayi thi. Kareeb 4 din se nahi li.' },
+  { delay:12000, type:'system',     text:'⚠️ Keyword: "dawai khatam" · "4 din se nahi li"', kw:'dawai khatam — 4 days missed', kwTier:'amber', wm:true },
+  { delay:13500, type:'ai',         text:'Samajh gaya. Kya aapne sugar test karaya iss hafte? Kitna tha reading?' },
+  { delay:16000, type:'patient',    text:'Haan, kal test kiya tha. 380 tha, thoda zyada hai na?' },
+  { delay:17000, type:'system',     text:'🚨 ALERT: Sugar 380 detected — exceeds threshold 300', kw:'sugar 380 — critical threshold', kwTier:'red', wm:true, riskUpdate:'AMBER' },
+  { delay:18500, type:'ai',         text:'Koi naya takleef? Chakkar ya pair mein sujan?' },
+  { delay:21000, type:'patient',    text:'Haan sir, pair mein sujan hai aur thoda chakkar bhi aa raha hai subah se.' },
+  { delay:22000, type:'system',     text:'🚨 Symptoms flagged — chakkar + sujan pair mein', kw:'chakkar + sujan — symptom cluster', kwTier:'red', wm:true, riskUpdate:'RED' },
+  { delay:23500, type:'ai',         text:'Ramesh ji, aapki situation thodi serious lag rahi hai. Doctor ko abhi message kar raha hoon. Aap aaram karein.', state:'processing', wmState:'PROCESSING' },
+  { delay:26000, type:'system',     text:'🔄 Claude NLP: Extracting structured output...', wm:true },
+  { delay:27500, type:'system',     text:'📊 Risk Score: RED · Escalating to Dr. Mehta', wm:true },
+  { delay:29000, type:'ai',         text:'Shukriya Ramesh ji. Dr. Mehta aapse jald hi contact karenge. Apna khayal rakhein!', state:'complete', wmState:'COMPLETE' },
+  { delay:31000, type:'system',     text:'✅ Call complete · Record saved · Doctor notified', wm:true },
+];
+
+function startCall() {
+  if (callRunning) return;
+  callRunning = true;
+  document.getElementById('call-btn').disabled = true;
+  document.getElementById('call-btn').textContent = '📞 In progress...';
+  document.getElementById('transcript-box').innerHTML = '';
+  document.getElementById('waveform').classList.remove('paused');
+  document.getElementById('wm-waveform').classList.remove('paused');
+  document.getElementById('call-status-label').textContent = '⬤ CALL ACTIVE';
+  document.getElementById('output-status').textContent = '— extracting in real-time —';
+  document.getElementById('keyword-feed').innerHTML = '';
+  setCallState('dialing');
+
+  callScript.forEach(step => {
+    setTimeout(() => {
+      addMsg('transcript-box', step.type, step.text);
+      if (step.state) setCallState(step.state);
+      if (step.wmState) {
+        document.getElementById('wm-state').textContent = step.wmState;
+        document.getElementById('wm-state').style.color = step.wmState === 'COMPLETE' ? '#a5d6a7' : '#4fc3f7';
+      }
+      if (step.wm) addWmBubble('wm-bubble-area', step.type, step.text);
+      else if (['ai','patient'].includes(step.type)) addWmBubble('wm-bubble-area', step.type, step.text);
+
+      if (step.langUpdate) {
+        document.getElementById('lang-detected').textContent = 'Hindi';
+        document.getElementById('code-switch').textContent = 'Hindi+Eng';
+        document.getElementById('stt-conf').textContent = '94%';
+        document.getElementById('sentiment').textContent = '😐 Neutral';
+      }
+      if (step.kw) {
+        const kw = document.getElementById('keyword-feed');
+        const tier = step.kwTier;
+        kw.innerHTML += '<div style="margin-bottom:6px;">'+(tier==='red'?'🚨':'⚠️')+' <span style="color:'+(tier==='red'?'#c62828':'#e65100')+';font-weight:600;">'+step.kw+'</span></div>';
+        addWmKeyword('wm-keywords', step.kw, tier);
+      }
+      if (step.riskUpdate) {
+        setWmRisk('', step.riskUpdate);
+        if (step.riskUpdate === 'AMBER') {
+          document.getElementById('risk-output').textContent = '🟡 WATCH — AMBER';
+          document.getElementById('risk-output').style.color = '#fb8c00';
+          document.getElementById('sentiment').textContent = '😟 Concerning';
+          document.getElementById('sentiment').style.color = '#e53935';
+          document.getElementById('out-sugar').textContent = '380 mg/dL'; document.getElementById('out-sugar').className = 'ov red';
+          document.getElementById('out-barrier').textContent = 'Dawai khatam'; document.getElementById('out-barrier').className = 'ov amber';
+          document.getElementById('out-meds').textContent = 'No ✗'; document.getElementById('out-meds').className = 'ov red';
+          document.getElementById('out-doses').textContent = '4 missed'; document.getElementById('out-doses').className = 'ov red';
+        }
+        if (step.riskUpdate === 'RED') {
+          document.getElementById('risk-output').textContent = '🔴 HIGH RISK — RED';
+          document.getElementById('risk-output').style.color = '#c62828';
+          document.getElementById('out-symptoms').textContent = 'Chakkar, sujan'; document.getElementById('out-symptoms').className = 'ov red';
+          document.getElementById('out-diet').textContent = 'Meetha zyada'; document.getElementById('out-diet').className = 'ov amber';
+          document.getElementById('output-status').textContent = '✓ extraction complete';
+          showNotification('🚨 RED Alert: Ramesh Kumar', 'Sugar 380, 4 missed doses, chakkar & sujan. Dr. Mehta notified.','danger');
+        }
+      }
+      if (step.state === 'complete') {
+        document.getElementById('call-status-label').textContent = '⬤ CALL COMPLETE';
+        document.getElementById('waveform').classList.add('paused');
+        document.getElementById('wm-waveform').classList.add('paused');
+      }
+    }, step.delay);
+  });
+}
+
+function resetCall() {
+  callRunning = false;
+  document.getElementById('call-btn').disabled = false;
+  document.getElementById('call-btn').textContent = '📞 Start Demo Call';
+  document.getElementById('transcript-box').innerHTML = '<div class="msg-system">— Transcript will appear here —</div>';
+  document.getElementById('waveform').classList.add('paused');
+  document.getElementById('wm-waveform').classList.add('paused');
+  document.getElementById('call-status-label').textContent = '⬤ READY TO CALL';
+  document.getElementById('output-status').textContent = '— waiting —';
+  document.getElementById('risk-output').textContent = 'Awaiting call...';
+  document.getElementById('risk-output').style.color = '#90a4ae';
+  ['out-meds','out-doses','out-sugar','out-symptoms','out-barrier','out-diet'].forEach(id => { const el = document.getElementById(id); el.textContent='—'; el.className='ov'; });
+  ['lang-detected','code-switch','stt-conf'].forEach(id => document.getElementById(id).textContent='—');
+  document.getElementById('sentiment').textContent='—';
+  document.getElementById('keyword-feed').textContent = 'Keywords detected in real-time during call...';
+  document.getElementById('wm-state').textContent = 'Waiting to start...';
+  document.getElementById('wm-bubble-area').innerHTML = '<div class="wm-bubble system"><div class="wm-bubble-who">System</div><div class="wm-bubble-text">Press Start Demo Call to begin.</div></div>';
+  document.getElementById('wm-keywords').innerHTML = '';
+  setWmRisk('', null);
+  document.getElementById('wm-risk-text').textContent = 'Awaiting call...';
+  document.getElementById('wm-risk-text').style.color = '#4fc3f7';
+  document.getElementById('wm-risk-chip').textContent = 'Risk: —';
+  document.getElementById('wm-risk-chip').style.color = '#90caf9';
+  setCallState('idle');
+}
+
+function openWatchMode()  { document.getElementById('watchmode').classList.add('active'); }
+function closeWatchMode() { document.getElementById('watchmode').classList.remove('active'); }
+
+// ── CAREGIVER CALL ──
+let cgRunning = false;
+const cgScript = [
+  { delay:800,   type:'system',    text:'📡 Checking patient profile... caregiver_primary = TRUE', wmState:'ROUTING' },
+  { delay:2000,  type:'system',    text:'📞 Routing to caregiver: Rajesh Kumar (Son) · +91 9123456789', wmState:'DIALING' },
+  { delay:3400,  type:'system',    text:'✅ Caregiver answered · Bhojpuri detected' },
+  { delay:4400,  type:'ai',        text:'Namaste Rajesh ji! Main AarogyaVaani se bol raha hoon. Main aapki maa Sunita Devi ji ke baare mein baat karna chahta hoon.', wmState:'GREETING' },
+  { delay:7200,  type:'caregiver', text:'Haan bolo, main unka beta hoon. Sab theek hai?' },
+  { delay:8200,  type:'system',    text:'🔍 Sarvam STT: Bhojpuri + Hindi mix detected · Confidence 91%' },
+  { delay:9500,  type:'ai',        text:'Rajesh ji, unhone 2 din pehle hospital se discharge liya. Kya unhone dawai li aaj?', wmState:'QUESTIONING' },
+  { delay:12000, type:'caregiver', text:'Nahi ji, kal se dawai nahi li. Unhe seene mein dard ho raha hai aur sans lene mein takleef hai.' },
+  { delay:13200, type:'system',    text:'🚨 DANGER SIGNS: chest pain + breathlessness — EMERGENCY FLAG', kw:'seene mein dard — chest pain!', kwTier:'red', riskUpdate:'RED' },
+  { delay:14800, type:'ai',        text:'Rajesh ji, yeh bahut serious symptoms hain! Abhi unhe hospital le jaiye. Main doctor ko turant message kar raha hoon.', wmState:'ESCALATING' },
+  { delay:17000, type:'caregiver', text:'Haan haan, hum abhi nikal rahe hain. Doctor ko bol dena please.' },
+  { delay:18500, type:'system',    text:'🚨 Emergency SMS sent to Dr. Sharma · Ambulance alert triggered', kw:'BP 190 reported — hypertensive crisis', kwTier:'red' },
+  { delay:20500, type:'ai',        text:'Shukriya Rajesh ji. Doctor ko message ho gaya. Jaldi jaiye, main track kar raha hoon.', wmState:'COMPLETE' },
+  { delay:22500, type:'system',    text:'✅ Call complete · Risk: RED · Caregiver proxy record saved · Source: caregiver' },
+];
+
+function startCgCall() {
+  if (cgRunning) return;
+  cgRunning = true;
+  document.getElementById('cg-btn').disabled = true;
+  document.getElementById('cg-btn').textContent = '📞 In progress...';
+  document.getElementById('cg-transcript').innerHTML = '';
+  document.getElementById('cg-waveform').classList.remove('paused');
+  document.getElementById('cg-wm-waveform').classList.remove('paused');
+  document.getElementById('cg-status-label').textContent = '⬤ CALL ACTIVE';
+  document.getElementById('cg-answered').textContent = '—';
+  document.getElementById('cg-lang').textContent = '—';
+
+  cgScript.forEach(step => {
+    setTimeout(() => {
+      addMsg('cg-transcript', step.type, step.text);
+      if (step.wmState) {
+        document.getElementById('cg-wm-state').textContent = step.wmState;
+        document.getElementById('cg-wm-state').style.color = step.wmState === 'COMPLETE' ? '#a5d6a7' : step.wmState === 'ESCALATING' ? '#ef9a9a' : '#ffe082';
+      }
+      addWmBubble('cg-wm-bubble-area', step.type, step.text);
+
+      if (step.text.includes('Bhojpuri detected')) {
+        document.getElementById('cg-answered').textContent = 'Rajesh (Son)';
+        document.getElementById('cg-lang').textContent = 'Bhojpuri + Hindi';
+      }
+      if (step.kw) {
+        addWmKeyword('cg-wm-keywords', step.kw, step.kwTier);
+      }
+      if (step.riskUpdate) {
+        setWmRisk('cg', step.riskUpdate);
+        document.getElementById('cg-meds').textContent = 'No — 2 days missed';
+        document.getElementById('cg-meds').style.color = '#c62828';
+        document.getElementById('cg-symptoms').textContent = 'Chest pain, breathless';
+        document.getElementById('cg-symptoms').style.color = '#c62828';
+        document.getElementById('cg-risk').textContent = '🔴 HIGH RISK — RED';
+        document.getElementById('cg-risk').style.color = '#c62828';
+        showNotification('🚨 Caregiver Proxy ALERT: Sunita Devi', 'Son reported chest pain + breathlessness. Dr. Sharma notified. Caregiver routing worked.', 'danger');
+      }
+      if (step.wmState === 'COMPLETE') {
+        document.getElementById('cg-status-label').textContent = '⬤ CALL COMPLETE';
+        document.getElementById('cg-waveform').classList.add('paused');
+        document.getElementById('cg-wm-waveform').classList.add('paused');
+      }
+    }, step.delay);
+  });
+}
+
+function resetCgCall() {
+  cgRunning = false;
+  document.getElementById('cg-btn').disabled = false;
+  document.getElementById('cg-btn').textContent = '📞 Start Caregiver Call';
+  document.getElementById('cg-transcript').innerHTML = '<div class="msg-system">— Caregiver proxy call transcript —</div>';
+  document.getElementById('cg-waveform').classList.add('paused');
+  document.getElementById('cg-wm-waveform').classList.add('paused');
+  document.getElementById('cg-status-label').textContent = '⬤ READY';
+  ['cg-answered','cg-lang','cg-meds','cg-symptoms'].forEach(id => document.getElementById(id).textContent = '—');
+  document.getElementById('cg-risk').textContent = 'Awaiting call...';
+  document.getElementById('cg-risk').style.color = '#90a4ae';
+  document.getElementById('cg-wm-state').textContent = 'Waiting to start...';
+  document.getElementById('cg-wm-bubble-area').innerHTML = '<div class="wm-bubble system"><div class="wm-bubble-who">System</div><div class="wm-bubble-text">Press Start Caregiver Call to begin.</div></div>';
+  document.getElementById('cg-wm-keywords').innerHTML = '';
+  setWmRisk('cg', null);
+  document.getElementById('cg-wm-risk-text').textContent = 'Awaiting call...';
+  document.getElementById('cg-wm-risk-text').style.color = '#4fc3f7';
+  document.getElementById('cg-wm-risk-chip').textContent = 'Risk: —';
+}
+
+function openCgWatchMode()  { document.getElementById('cg-watchmode').classList.add('active'); }
+function closeCgWatchMode() { document.getElementById('cg-watchmode').classList.remove('active'); }
+
+// ── NOTIFICATIONS ──
+function showNotification(title, body, type) {
+  const old = document.querySelector('.notif'); if (old) old.remove();
+  const n = document.createElement('div');
+  n.className = 'notif' + (type==='danger'?' danger':'');
+  n.innerHTML = '<div class="notif-icon">'+(type==='danger'?'🚨':'✅')+'</div><div><div class="notif-title">'+title+'</div><div class="notif-body">'+body+'</div></div>';
+  document.body.appendChild(n);
+  setTimeout(() => n.remove(), 6000);
+}
+function notifyDoctor(name) { showNotification('✅ Doctor Notified', 'Alert sent for '+name+'. Doctor will be contacted within 5 minutes.', 'success'); }
+
+// ── INIT ──
+window.onload = function() {
+  drawAdherenceChart();
+  setCallState('idle');
+};
+</script>
+</body>
+</html>
